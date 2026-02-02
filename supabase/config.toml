@@ -1,0 +1,33 @@
+
+[functions.create-room]
+enabled = true
+verify_jwt = true
+import_map = "./functions/create-room/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/create-room/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/create-room/*.html" ]
+
+[functions.finalize-time]
+enabled = true
+verify_jwt = true
+import_map = "./functions/finalize-time/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/finalize-time/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/finalize-time/*.html" ]
+
+[functions.finalize-place]
+enabled = true
+verify_jwt = true
+import_map = "./functions/finalize-place/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/finalize-place/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/finalize-place/*.html" ]
