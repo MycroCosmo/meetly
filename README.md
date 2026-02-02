@@ -39,6 +39,7 @@ When2Meet는 가용성 오버랩에 초점을 맞춘 훌륭한 도구이지만, 
 
 ### Frontend
 - **Nuxt3**: Vue 3 기반, SSR 불필요 (SPA 모드)
+- **TypeScript**: 타입 안전성
 - **모바일 우선**: 반응형 디자인, 데스크톱은 폴백
 
 ### Backend
@@ -68,10 +69,10 @@ npm install
 ```
 
 2. **환경 변수 설정**
-`.env` 파일을 생성하고 다음 내용을 추가하세요:
+프로젝트 루트에 `.env` 파일을 생성하고 다음 내용을 추가하세요:
 ```
-NUXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NUXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NUXT_PUBLIC_SUPABASE_URL=supabase_url
+NUXT_PUBLIC_SUPABASE_ANON_KEY=supabase_anon_key
 ```
 
 3. **데이터베이스 마이그레이션**
@@ -82,7 +83,10 @@ Supabase Dashboard의 SQL Editor에서 다음 순서로 마이그레이션을 �
 
 4. **Edge Functions 배포** (선택사항)
 ```bash
-# Supabase CLI 설치 필요
+# Supabase CLI 설치 (아직 설치하지 않은 경우)
+npm install -g supabase
+
+# Edge Functions 배포
 supabase functions deploy availability-overlap
 supabase functions deploy cleanup-expired-rooms
 ```
@@ -117,7 +121,8 @@ meetly/
 ├── composables/      # Vue Composables
 │   ├── useSupabase.ts
 │   ├── useParticipantToken.ts
-│   └── useRoom.ts
+│   ├── useRoom.ts
+│   └── useRlsContext.ts
 ├── pages/            # Nuxt 페이지
 │   ├── index.vue
 │   ├── create.vue
@@ -136,6 +141,7 @@ meetly/
 - **자동 정리**: TTL 정책에 따라 만료된 방 자동 삭제
 - **투명성**: 모든 참여자가 데이터를 읽을 수 있음 (RLS 정책)
 - **보안**: 참여자는 자신의 데이터만 수정 가능
+- **사용자 경험**: 실수 방지를 위한 확인 모달 (홈 이동 등)
 
 ## 라이선스
 
