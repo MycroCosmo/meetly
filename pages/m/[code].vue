@@ -205,6 +205,16 @@
 <script setup lang="ts">
 definePageMeta({ layout: false })
 
+useSeoMeta({
+  title: '모임 참여 - Meetly',
+  description: '그룹 모임에 참여하여 시간, 장소, 비용을 함께 계획하세요.',
+  robots: 'noindex, nofollow', // 검색 엔진에 노출하지 않음
+  ogTitle: '모임 참여 - Meetly',
+  ogDescription: '그룹 모임에 참여하여 시간, 장소, 비용을 함께 계획하세요.',
+  ogImage: '/og-image.svg',
+  twitterCard: 'summary_large_image'
+})
+
 import type { Room, Participant } from '~/composables/useRoom'
 import { useToast } from '~/composables/useToast'
 

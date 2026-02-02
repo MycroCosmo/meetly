@@ -56,6 +56,16 @@
 <script setup lang="ts">
 definePageMeta({ layout: false })
 
+useSeoMeta({
+  title: '새 모임 만들기 - Meetly',
+  description: '새로운 그룹 모임을 만들고 시간, 장소, 비용을 함께 계획하세요. 쉽고 빠른 모임 생성.',
+  keywords: '새 모임 만들기, 그룹 스케줄링, 모임 계획, Meetly',
+  ogTitle: '새 모임 만들기 - Meetly',
+  ogDescription: '새로운 그룹 모임을 만들고 시간, 장소, 비용을 함께 계획하세요.',
+  ogImage: '/og-image.svg',
+  twitterCard: 'summary_large_image'
+})
+
 const router = useRouter()
 const { createRoom } = useRoom()
 

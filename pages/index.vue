@@ -31,6 +31,16 @@
 <script setup lang="ts">
 definePageMeta({ layout: false })
 
+useSeoMeta({
+  title: 'Meetly - 그룹 스케줄링 앱',
+  description: '심플한 스타일의 그룹 스케줄링 앱. 시간, 장소, 비용을 함께 계획하세요. 모바일 우선 디자인으로 쉽고 빠른 모임 계획.',
+  keywords: '스케줄링, 그룹모임, 시간조율, 장소투표, 비용분할, 모임계획',
+  ogTitle: 'Meetly - 그룹 스케줄링 앱',
+  ogDescription: '심플한 스타일의 그룹 스케줄링 앱. 시간, 장소, 비용을 함께 계획하세요.',
+  ogImage: '/og-image.svg',
+  twitterCard: 'summary_large_image'
+})
+
 const supabase = useSupabase()
 const router = useRouter()
 
