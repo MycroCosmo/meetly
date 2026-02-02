@@ -469,6 +469,11 @@ const refreshRoom = async () => {
 
 const goHome = async () => {
   if (route.path === '/') return
+  
+  if (!confirm('정말로 홈으로 돌아가시겠습니까?\n(작성 중인 내용이 저장되지 않을 수 있습니다)')) {
+    return
+  }
+  
   await router.push('/')
 }
 
