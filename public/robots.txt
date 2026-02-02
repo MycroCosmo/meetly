@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /m/
 
-Sitemap: https://meetly-app.vercel.app/sitemap.xml
+Sitemap: https://meetlypublic.vercel.app/sitemap.xml

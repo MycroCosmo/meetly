@@ -139,11 +139,53 @@ meetly/
 - **모바일 우선**: 모든 UI가 모바일 환경을 우선으로 설계됨
 - **익명 참여**: 회원가입 없이 participantToken으로 참여 가능
 - **자동 정리**: TTL 정책에 따라 만료된 방 자동 삭제
+- **배치 처리**: Spring Boot 스타일의 정교한 데이터 정리 (cleanup-expired-rooms)
 - **투명성**: 모든 참여자가 데이터를 읽을 수 있음 (RLS 정책)
 - **보안**: 참여자는 자신의 데이터만 수정 가능
 - **사용자 경험**: 실수 방지를 위한 확인 모달 (홈 이동 등)
 - **SEO 최적화**: 메타 태그, robots.txt, sitemap.xml 지원
 
-## 라이선스
+## 배치 처리 (Batch Processing)
 
-MIT
+Spring Boot 스타일의 정교한 배치 처리를 통해 만료된 방과 관련 데이터를 자동으로 정리합니다.
+
+### cleanup-expired-rooms 함수
+
+- **트리거**: 시간별 Cron 작업
+- **배치 크기**: 한 번에 최대 100개 방 처리 (성능 및 안전성 고려)
+- **처리 방식**: 개별 방 단위 처리 (하나의 실패가 전체를 중단시키지 않음)
+- **통계 수집**: 각 테이블별 삭제된 레코드 수 상세 기록
+- **에러 처리**: 개별 방 처리 실패 시에도 계속 진행
+- **로깅**: 처리 시간, 성공/실패 상태, 상세 통계 기록
+
+### 정리 대상 데이터
+
+방이 만료되면 다음 모든 관련 데이터가 CASCADE로 자동 삭제됩니다:
+
+- **참여자 (participants)**: 방의 모든 참여자 정보
+- **시간 투표 (availability_blocks)**: 모든 가용성 시간 블록
+- **장소 후보 (place_candidates)**: 제안된 모든 장소
+- **장소 투표 (place_votes)**: 모든 장소 투표 데이터
+- **비용 항목 (expense_items)**: 모든 비용 항목
+- **비용 분배 (expense_shares)**: 모든 비용 분배 데이터
+
+### 배치 처리 결과 예시
+
+```json
+{
+  "success": true,
+  "message": "Successfully cleaned up 3 expired rooms and all related data",
+  "stats": {
+    "total_expired_rooms": 3,
+    "processed_rooms": 3,
+    "deleted_participants": 12,
+    "deleted_availability_blocks": 45,
+    "deleted_place_candidates": 9,
+    "deleted_place_votes": 12,
+    "deleted_expense_items": 6,
+    "deleted_expense_shares": 18,
+    "processing_time_ms": 1250,
+    "errors": []
+  }
+}
+```
