@@ -1,4 +1,4 @@
-<!-- SummaryTab.vue (B안 유지 + 확정 정보 "복사" 버튼 + 방장 전용 확정 버튼) -->
+<!-- SummaryTab.vue (B안 유지 + 확정 정보 "복사" 버튼 + 방장 전용 확정 버튼 + 제출 없이 확정해도 시간 투표 현황에 표시) -->
 <template>
   <div class="summary-tab">
     <!-- ===================== -->
@@ -49,11 +49,7 @@
 
             <!-- ✅ 확정 장소 URL: 클릭 시 새창 -->
             <p v-if="finalizedPlace.url" class="place-url">
-              <a
-                :href="finalizedPlace.url"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a :href="finalizedPlace.url" target="_blank" rel="noopener noreferrer">
                 링크 열기
               </a>
               <span class="url-raw">{{ finalizedPlace.url }}</span>
@@ -62,9 +58,7 @@
         </div>
       </template>
 
-      <p v-if="isHost" class="host-hint">
-        방장 권한으로 시간/장소를 확정할 수 있습니다.
-      </p>
+      <p v-if="isHost" class="host-hint">방장 권한으로 시간/장소를 확정할 수 있습니다.</p>
     </div>
 
     <!-- ===================== -->
@@ -85,12 +79,7 @@
       </div>
 
       <template v-else>
-        <div
-          v-if="timeVotes.length === 0 && Object.keys(allDayCountByDate).length === 0"
-          class="empty-state"
-        >
-          투표된 시간이 없습니다.
-        </div>
+        <div v-if="isTimeEmpty" class="empty-state">투표된 시간이 없습니다.</div>
 
         <div v-else class="date-list">
           <button
@@ -110,18 +99,32 @@
               <div class="date-meta">
                 <span class="pill">{{ g.maxCount }}명 투표</span>
                 <span class="pill">{{ g.items.length }}개</span>
+
+                <!-- ✅ 제출이 0명이어도 확정된 날짜면 뱃지 표시 -->
+                <span v-if="finalizedDateIso === g.dateIso" class="pill pill-finalized">확정</span>
+
                 <span class="chev" :class="{ open: openDate === g.dateIso }">⌄</span>
               </div>
             </div>
 
-            <div
-              v-if="openDate === g.dateIso"
-              class="date-card-body"
-              @click.stop
-            >
+            <div v-if="openDate === g.dateIso" class="date-card-body" @click.stop>
+              <!-- ✅ 제출이 없어도 확정된 시간은 항상 보여주기 -->
+              <div v-if="finalizedDateIso === g.dateIso && room.finalized_time_start" class="vote-row">
+                <div class="vote-time">
+                  <div class="t-main">
+                    {{ finalizedAllDay ? '상관없음' : '확정 시간' }}
+                  </div>
+                  <div v-if="!finalizedAllDay" class="t-sub">{{ timeText }}</div>
+                </div>
+
+                <div class="vote-right">
+                  <span class="finalized-badge-mini">확정</span>
+                </div>
+              </div>
+
               <div class="vote-row" v-if="g.allDayCount >= 1">
                 <div class="vote-time">
-                  <div class="t-main ">상관없음</div>
+                  <div class="t-main">상관없음</div>
                 </div>
 
                 <div class="vote-right">
@@ -145,10 +148,7 @@
                 </div>
 
                 <div class="vote-right">
-                  <div
-                    class="vote-count"
-                    :class="{ best: v.participant_count === g.maxCount }"
-                  >
+                  <div class="vote-count" :class="{ best: v.participant_count === g.maxCount }">
                     {{ v.participant_count }}명
                   </div>
 
@@ -164,9 +164,7 @@
                 </div>
               </div>
 
-              <p v-if="isHost" class="hint-mini">
-                - 확정 시 “확정 정보” 섹션이 즉시 반영됩니다.
-              </p>
+              <p v-if="isHost" class="hint-mini">- 확정 시 “확정 정보” 섹션이 즉시 반영됩니다.</p>
             </div>
           </button>
         </div>
@@ -185,9 +183,7 @@
       </div>
 
       <template v-else>
-        <div v-if="placeVotes.length === 0" class="empty-state">
-          투표된 장소가 없습니다.
-        </div>
+        <div v-if="placeVotes.length === 0" class="empty-state">투표된 장소가 없습니다.</div>
 
         <div v-else class="votes-list">
           <div v-for="vote in placeVotes" :key="vote.id" class="vote-item">
@@ -195,9 +191,7 @@
               <p class="vote-place">{{ vote.name }}</p>
               <p v-if="vote.address" class="place-sub">{{ vote.address }}</p>
               <p v-if="vote.url" class="place-sub">
-                <a :href="vote.url" target="_blank" rel="noopener noreferrer">
-                  링크로 이동
-                </a>
+                <a :href="vote.url" target="_blank" rel="noopener noreferrer">링크로 이동</a>
               </p>
             </div>
 
@@ -213,21 +207,14 @@
               >
                 이 장소 확정
               </button>
-              <span
-                v-else-if="room.finalized_place_id === vote.id"
-                class="finalized-badge"
-              >
-                확정
-              </span>
+              <span v-else-if="room.finalized_place_id === vote.id" class="finalized-badge">확정</span>
             </div>
           </div>
         </div>
       </template>
     </div>
 
-    <div v-if="errorMessage" class="error-message">
-      {{ errorMessage }}
-    </div>
+    <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
   </div>
 </template>
 
@@ -336,6 +323,26 @@ const finalizedCopyText = computed(() => {
 })
 
 /**
+ * ✅ 확정된 날짜 ISO / 올데이 여부
+ * - 제출이 0명이어도 "시간 투표 현황"에 날짜가 뜨게 하는 핵심
+ */
+const finalizedDateIso = computed(() => {
+  const s = props.room.finalized_time_start
+  if (!s) return null
+  return toLocalDateIso(new Date(s))
+})
+
+const finalizedAllDay = computed(() => {
+  const s = props.room.finalized_time_start
+  const e = props.room.finalized_time_end
+  if (!s || !e) return false
+  const ds = new Date(s)
+  const de = new Date(e)
+  const durationMin = (de.getTime() - ds.getTime()) / 60000
+  return durationMin >= 24 * 60 - 1
+})
+
+/**
  * 날짜별 "상관없음(올데이)" 인원수
  */
 type AvailabilityBlockLite = {
@@ -388,16 +395,19 @@ const groupedDates = computed<DateGroup[]>(() => {
     map.get(iso)!.push(v)
   }
 
-  const allDayDates = Object.keys(allDayCountByDate.value)
-  for (const iso of allDayDates) {
+  // ✅ 올데이 투표가 있는 날짜도 포함
+  for (const iso of Object.keys(allDayCountByDate.value)) {
     if (!map.has(iso)) map.set(iso, [])
+  }
+
+  // ✅ 확정된 날짜가 "제출/투표 0개"여도 리스트에 뜨도록 강제 포함
+  if (finalizedDateIso.value && !map.has(finalizedDateIso.value)) {
+    map.set(finalizedDateIso.value, [])
   }
 
   const groups: DateGroup[] = []
   for (const [dateIso, items] of map.entries()) {
-    const sorted = [...items].sort(
-      (a, b) => Date.parse(a.slot_start) - Date.parse(b.slot_start)
-    )
+    const sorted = [...items].sort((a, b) => Date.parse(a.slot_start) - Date.parse(b.slot_start))
     const maxSlot = sorted.reduce((mx, x) => Math.max(mx, x.participant_count), 0)
 
     const allDay = allDayCountByDate.value[dateIso] ?? 0
@@ -414,6 +424,13 @@ const groupedDates = computed<DateGroup[]>(() => {
 
   groups.sort((a, b) => (a.dateIso < b.dateIso ? -1 : a.dateIso > b.dateIso ? 1 : 0))
   return groups
+})
+
+const isTimeEmpty = computed(() => {
+  const hasVotes = timeVotes.value.length > 0
+  const hasAllDay = Object.keys(allDayCountByDate.value).length > 0
+  const hasFinalizedSeed = !!finalizedDateIso.value
+  return !hasVotes && !hasAllDay && !hasFinalizedSeed
 })
 
 const toggleOpen = (dateIso: string) => {
@@ -584,11 +601,7 @@ const finalizePlaceFromSummary = async (candidateId: string) => {
   errorMessage.value = ''
 
   try {
-    const { error } = await supabase
-      .from('rooms')
-      .update({ finalized_place_id: candidateId })
-      .eq('id', props.room.id)
-
+    const { error } = await supabase.from('rooms').update({ finalized_place_id: candidateId }).eq('id', props.room.id)
     if (error) throw error
 
     await loadFinalizedPlace()
@@ -628,6 +641,23 @@ onMounted(async () => {
   loadTimeVotes()
   loadPlaceVotes()
 })
+
+/**
+ * ✅ room 값이 새로 갱신되면 Summary도 같이 최신화
+ * - "제출 없이 확정" 같은 케이스에서 finalized_time_* 변경을 확실히 반영
+ */
+watch(
+  () => [
+    props.room.id,
+    props.room.finalized_time_start,
+    props.room.finalized_time_end,
+    props.room.finalized_place_id
+  ],
+  async () => {
+    await loadFinalizedPlace()
+    await loadTimeVotes()
+  }
+)
 
 watch(
   () => props.room.finalized_place_id,
@@ -688,7 +718,6 @@ watch(
 .toolbar .muted {
   font-size: 0.85rem;
   color: #6b7280;
-  
 }
 .empty-state {
   color: #888;
@@ -811,6 +840,20 @@ watch(
   color: #111827;
   font-weight: 700;
 }
+.pill-finalized {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.finalized-badge-mini {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: #16a34a;
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.75rem;
+}
+
 .chev {
   display: inline-block;
   font-weight: 900;
@@ -842,7 +885,7 @@ watch(
 .vote-time {
   display: flex;
   flex-direction: column;
-  justify-content: center; 
+  justify-content: center;
   gap: 0.1rem;
 }
 .t-main {
