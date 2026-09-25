@@ -1,191 +1,103 @@
 # Meetly
 
-그룹 스케줄링을 위한 모바일 우선 웹 애플리케이션. When2Meet 스타일의 가용성 오버랩 기능에 장소 투표와 비용 분할 기능을 추가했습니다.
+Meetly is a mobile-first group scheduling service that combines **time availability, place voting, and expense splitting** in one temporary meeting room.
 
-## 해결하는 문제
+The project was designed around a simple constraint: participants should be able to join and coordinate without creating a permanent account.
 
-When2Meet는 가용성 오버랩에 초점을 맞춘 훌륭한 도구이지만, 실제 그룹 모임을 계획할 때는 다음과 같은 추가 기능이 필요합니다:
+## Problems addressed
 
-1. **장소 결정**: 시간만으로는 부족하며, 어디서 만날지 결정해야 합니다.
-2. **비용 분할**: 여행이나 모임에서 공동 비용을 투명하게 분할해야 합니다.
-3. **익명 참여자 지원**: 회원가입 없이도 참여할 수 있어야 합니다.
-4. **TTL 관리**: 일시적인 모임을 위한 자동 정리 기능이 필요합니다.
+A group normally has to solve three separate questions:
 
-## 주요 기능
+1. When can everyone meet?
+2. Where should the group meet?
+3. How should shared expenses be divided?
 
-### 1. 가용성 오버랩 (When2Meet 스타일)
-- 참여자가 가용성 시간 범위를 제출
-- 30분 단위로 오버랩 계산 및 시각화
-- 상위 오버랩 시간 범위 표시
+Meetly keeps those decisions inside one room and allows anonymous participation through a participant token.
 
-### 2. 장소 투표
-- 장소 후보 추가 (이름, 주소, 좌표)
-- 참여자당 1표 투표
-- 투표 수 실시간 표시
-- 방 소유자가 최종 장소 확정
+## Tech stack
 
-### 3. 비용 분할
-- 비용 항목 추가 (제목, 총액, 지불자)
-- 분할 유형:
-  - **EQUAL**: 자동으로 1/n 계산
-  - **CUSTOM**: 참여자별 수동 금액 입력 (합계 검증)
-- 각 참여자의 부담 금액 표시
+| Area | Technology |
+|---|---|
+| Frontend | Nuxt 3, Vue 3, TypeScript |
+| Database | Supabase PostgreSQL |
+| Authorization | PostgreSQL Row Level Security |
+| Server-side jobs | Supabase Edge Functions |
+| Deployment | Vercel + Supabase |
 
-### 4. 요약 및 공유
-- 확정된 시간 및 장소 표시
-- 공유 가능한 텍스트 블록 생성 (클립보드 복사)
+## Main features
 
-## 기술 스택
+### Availability overlap
 
-### Frontend
-- **Nuxt3**: Vue 3 기반, SSR 불필요 (SPA 모드)
-- **TypeScript**: 타입 안전성
-- **모바일 우선**: 반응형 디자인, 데스크톱은 폴백
+Participants submit available time ranges.
 
-### Backend
-- **Supabase PostgreSQL**: 메인 데이터베이스
-- **Supabase Auth**: 회원 인증 (선택적)
-- **Row Level Security (RLS)**: 데이터 접근 제어
-- **Supabase Edge Functions**: 최소한의 사용
-  - 가용성 오버랩 계산 (30분 단위 집계)
-  - TTL 정리 작업 (Cron)
+Availability is normalized into 30-minute slots so overlap can be aggregated and the strongest candidate periods can be shown consistently.
 
-### 배포
-- **Frontend**: Vercel
-- **Backend/DB**: Supabase Free Plan
+### Place voting
 
-## 로컬 개발 환경 설정
+Participants can add candidate places and vote on them. The room owner can finalize the selected location after reviewing the result.
 
-### 필수 요구사항
-- Node.js 18+ 
-- npm 또는 yarn
-- Supabase 계정
+### Expense splitting
 
-### 설치 및 실행
+Expense items support:
 
-1. **의존성 설치**
+- equal split;
+- custom per-participant amounts;
+- validation that custom shares match the total amount.
+
+### Anonymous participation
+
+The core flow does not require account creation.
+
+A participant token identifies the participant inside the room, while database access is constrained through RLS policies.
+
+### Temporary-room lifecycle
+
+Meeting rooms are temporary data rather than permanent social profiles.
+
+Expired rooms are cleaned by a scheduled Edge Function. Cleanup is processed in bounded batches so one failure does not need to stop the whole run.
+
+## Data and authorization model
+
+The backend is intentionally small. Most persistence and authorization behavior is expressed in PostgreSQL/Supabase.
+
+Main concepts include:
+
+- rooms;
+- participants;
+- availability blocks;
+- place candidates and votes;
+- expense items and shares.
+
+RLS is used so a participant can read the room data needed for collaboration while writes remain constrained to the appropriate participant/context.
+
+## Project structure
+
+```text
+meetly/
+├── components/
+├── composables/
+├── pages/
+├── supabase/
+│   ├── migrations/
+│   └── functions/
+└── ARCHITECTURE.md
+```
+
+## Local setup
+
 ```bash
 npm install
-```
-
-2. **환경 변수 설정**
-프로젝트 루트에 `.env` 파일을 생성하고 다음 내용을 추가하세요:
-```
-NUXT_PUBLIC_SUPABASE_URL=supabase_url
-NUXT_PUBLIC_SUPABASE_ANON_KEY=supabase_anon_key
-```
-
-3. **데이터베이스 마이그레이션**
-Supabase Dashboard의 SQL Editor에서 다음 순서로 마이그레이션을 실행하세요:
-- `supabase/migrations/001_initial_schema.sql`
-- `supabase/migrations/002_rls_policies.sql`
-- `supabase/migrations/003_helper_functions.sql`
-
-4. **Edge Functions 배포** (선택사항)
-```bash
-# Supabase CLI 설치 (아직 설치하지 않은 경우)
-npm install -g supabase
-
-# Edge Functions 배포
-supabase functions deploy availability-overlap
-supabase functions deploy cleanup-expired-rooms
-```
-
-5. **개발 서버 실행**
-```bash
 npm run dev
 ```
 
-브라우저에서 `http://localhost:3000`을 열어 확인하세요.
+Create a local `.env` with the Supabase project URL and anonymous key.
 
-## Supabase Free Plan 제한사항
+Database schema and RLS policies are stored under `supabase/migrations`.
 
-- **데이터베이스 크기**: 500MB
-- **월간 대역폭**: 5GB
-- **Edge Functions 실행 시간**: 500,000 초/월
-- **동시 연결 수**: 200개
-- **RLS 정책**: 무제한
+## What this project demonstrates
 
-이 제한 내에서 운영하도록 설계되었습니다. 프로덕션 환경에서는 필요에 따라 유료 플랜으로 업그레이드하세요.
-
-## 프로젝트 구조
-
-```
-meetly/
-├── assets/           # CSS 및 정적 자산
-├── components/       # Vue 컴포넌트
-│   ├── TimeTab.vue
-│   ├── PlacesTab.vue
-│   ├── SummaryTab.vue
-│   └── ExpensesTab.vue
-├── composables/      # Vue Composables
-│   ├── useSupabase.ts
-│   ├── useParticipantToken.ts
-│   ├── useRoom.ts
-│   └── useRlsContext.ts
-├── pages/            # Nuxt 페이지
-│   ├── index.vue
-│   ├── create.vue
-│   └── m/
-│       └── [code].vue
-├── supabase/
-│   ├── migrations/   # 데이터베이스 마이그레이션
-│   └── functions/    # Edge Functions
-└── ARCHITECTURE.md   # 아키텍처 문서
-```
-
-## 주요 특징
-
-- **모바일 우선**: 모든 UI가 모바일 환경을 우선으로 설계됨
-- **익명 참여**: 회원가입 없이 participantToken으로 참여 가능
-- **자동 정리**: TTL 정책에 따라 만료된 방 자동 삭제
-- **배치 처리**: Spring Boot 스타일의 정교한 데이터 정리 (cleanup-expired-rooms)
-- **투명성**: 모든 참여자가 데이터를 읽을 수 있음 (RLS 정책)
-- **보안**: 참여자는 자신의 데이터만 수정 가능
-- **사용자 경험**: 실수 방지를 위한 확인 모달 (홈 이동 등)
-- **SEO 최적화**: 메타 태그, robots.txt, sitemap.xml 지원
-
-## 배치 처리 (Batch Processing)
-
-Spring Boot 스타일의 정교한 배치 처리를 통해 만료된 방과 관련 데이터를 자동으로 정리합니다.
-
-### cleanup-expired-rooms 함수
-
-- **트리거**: 시간별 Cron 작업
-- **배치 크기**: 한 번에 최대 100개 방 처리 (성능 및 안전성 고려)
-- **처리 방식**: 개별 방 단위 처리 (하나의 실패가 전체를 중단시키지 않음)
-- **통계 수집**: 각 테이블별 삭제된 레코드 수 상세 기록
-- **에러 처리**: 개별 방 처리 실패 시에도 계속 진행
-- **로깅**: 처리 시간, 성공/실패 상태, 상세 통계 기록
-
-### 정리 대상 데이터
-
-방이 만료되면 다음 모든 관련 데이터가 CASCADE로 자동 삭제됩니다:
-
-- **참여자 (participants)**: 방의 모든 참여자 정보
-- **시간 투표 (availability_blocks)**: 모든 가용성 시간 블록
-- **장소 후보 (place_candidates)**: 제안된 모든 장소
-- **장소 투표 (place_votes)**: 모든 장소 투표 데이터
-- **비용 항목 (expense_items)**: 모든 비용 항목
-- **비용 분배 (expense_shares)**: 모든 비용 분배 데이터
-
-### 배치 처리 결과 예시
-
-```json
-{
-  "success": true,
-  "message": "Successfully cleaned up 3 expired rooms and all related data",
-  "stats": {
-    "total_expired_rooms": 3,
-    "processed_rooms": 3,
-    "deleted_participants": 12,
-    "deleted_availability_blocks": 45,
-    "deleted_place_candidates": 9,
-    "deleted_place_votes": 12,
-    "deleted_expense_items": 6,
-    "deleted_expense_shares": 18,
-    "processing_time_ms": 1250,
-    "errors": []
-  }
-}
-```
+- modeling a short-lived collaboration workflow;
+- authorization at the data layer with RLS;
+- anonymous-user state without mandatory signup;
+- deterministic time-slot aggregation;
+- cleanup of temporary data through scheduled jobs.
