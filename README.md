@@ -73,7 +73,7 @@ Supabase RLS를 이용해 협업에 필요한 조회는 허용하면서, 데이�
 
 ## 프로젝트 구조
 
-\`\`\`text
+```text
 meetly/
 ├── components/
 ├── composables/
@@ -82,18 +82,18 @@ meetly/
 │   ├── migrations/
 │   └── functions/
 └── ARCHITECTURE.md
-\`\`\`
+```
 
 ## 실행
 
-\`\`\`bash
+```bash
 npm install
 npm run dev
-\`\`\`
+```
 
 Supabase URL과 anon key는 로컬 환경 변수로 설정합니다.
 
-DB schema와 RLS policy는 \`supabase/migrations\`에서 관리합니다.
+DB schema와 RLS policy는 `supabase/migrations`에서 관리합니다.
 
 ## 이 프로젝트에서 다룬 내용
 
