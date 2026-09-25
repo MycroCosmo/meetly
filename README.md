@@ -1,78 +1,79 @@
 # Meetly
 
-Meetly is a mobile-first group scheduling service that combines **time availability, place voting, and expense splitting** in one temporary meeting room.
+Meetly는 여러 사람이 **가능 시간, 장소 투표, 비용 분담**을 하나의 임시 모임방에서 정리할 수 있도록 만든 모바일 우선 일정 조율 서비스입니다.
 
-The project was designed around a simple constraint: participants should be able to join and coordinate without creating a permanent account.
+핵심 조건은 회원가입을 강제하지 않고도 모임에 참여할 수 있게 하는 것이었습니다.
 
-## Problems addressed
+## 해결하려는 문제
 
-A group normally has to solve three separate questions:
+실제 모임을 정할 때는 보통 세 가지를 따로 결정해야 합니다.
 
-1. When can everyone meet?
-2. Where should the group meet?
-3. How should shared expenses be divided?
+1. 언제 만날지
+2. 어디서 만날지
+3. 비용을 어떻게 나눌지
 
-Meetly keeps those decisions inside one room and allows anonymous participation through a participant token.
+Meetly는 이 과정을 하나의 방 안에서 처리하고, 익명 참여자는 participant token으로 구분합니다.
 
-## Tech stack
+## 기술 스택
 
-| Area | Technology |
+| 영역 | 기술 |
 |---|---|
 | Frontend | Nuxt 3, Vue 3, TypeScript |
 | Database | Supabase PostgreSQL |
 | Authorization | PostgreSQL Row Level Security |
-| Server-side jobs | Supabase Edge Functions |
-| Deployment | Vercel + Supabase |
+| Server-side Job | Supabase Edge Functions |
+| Deployment | Vercel, Supabase |
 
-## Main features
+## 주요 기능
 
-### Availability overlap
+### 가능 시간 겹침 계산
 
-Participants submit available time ranges.
+참여자가 가능한 시간 범위를 입력하면 30분 단위 slot으로 정규화해 겹치는 인원 수를 계산합니다.
 
-Availability is normalized into 30-minute slots so overlap can be aggregated and the strongest candidate periods can be shown consistently.
+이를 통해 가장 많은 사람이 가능한 시간대를 일관된 방식으로 비교할 수 있도록 했습니다.
 
-### Place voting
+### 장소 투표
 
-Participants can add candidate places and vote on them. The room owner can finalize the selected location after reviewing the result.
+참여자가 장소 후보를 추가하고 투표할 수 있습니다.
 
-### Expense splitting
+방 생성자는 결과를 확인한 뒤 최종 장소를 확정할 수 있습니다.
 
-Expense items support:
+### 비용 분담
 
-- equal split;
-- custom per-participant amounts;
-- validation that custom shares match the total amount.
+비용 항목은 두 가지 방식으로 나눌 수 있습니다.
 
-### Anonymous participation
+- 균등 분할
+- 참여자별 직접 금액 입력
 
-The core flow does not require account creation.
+직접 입력 방식에서는 참여자별 금액 합계가 전체 비용과 일치하는지 검증합니다.
 
-A participant token identifies the participant inside the room, while database access is constrained through RLS policies.
+### 익명 참여
 
-### Temporary-room lifecycle
+핵심 기능은 별도 회원가입 없이 이용할 수 있습니다.
 
-Meeting rooms are temporary data rather than permanent social profiles.
+participant token을 통해 방 내부 사용자를 구분하고, DB 접근 권한은 RLS 정책으로 제한합니다.
 
-Expired rooms are cleaned by a scheduled Edge Function. Cleanup is processed in bounded batches so one failure does not need to stop the whole run.
+### 임시 데이터 정리
 
-## Data and authorization model
+모임방은 영구적인 SNS 데이터가 아니라 일정 기간 사용 후 정리되는 데이터로 설계했습니다.
 
-The backend is intentionally small. Most persistence and authorization behavior is expressed in PostgreSQL/Supabase.
+만료된 방은 scheduled Edge Function으로 정리하며, 한 번에 처리하는 대상을 제한해 하나의 실패가 전체 작업을 중단시키지 않도록 구성했습니다.
 
-Main concepts include:
+## 데이터와 권한 구조
 
-- rooms;
-- participants;
-- availability blocks;
-- place candidates and votes;
-- expense items and shares.
+주요 데이터:
 
-RLS is used so a participant can read the room data needed for collaboration while writes remain constrained to the appropriate participant/context.
+- rooms
+- participants
+- availability blocks
+- place candidates / votes
+- expense items / shares
 
-## Project structure
+Supabase RLS를 이용해 협업에 필요한 조회는 허용하면서, 데이터 수정은 해당 참여자와 방의 맥락에 맞게 제한합니다.
 
-```text
+## 프로젝트 구조
+
+\`\`\`text
 meetly/
 ├── components/
 ├── composables/
@@ -81,23 +82,23 @@ meetly/
 │   ├── migrations/
 │   └── functions/
 └── ARCHITECTURE.md
-```
+\`\`\`
 
-## Local setup
+## 실행
 
-```bash
+\`\`\`bash
 npm install
 npm run dev
-```
+\`\`\`
 
-Create a local `.env` with the Supabase project URL and anonymous key.
+Supabase URL과 anon key는 로컬 환경 변수로 설정합니다.
 
-Database schema and RLS policies are stored under `supabase/migrations`.
+DB schema와 RLS policy는 \`supabase/migrations\`에서 관리합니다.
 
-## What this project demonstrates
+## 이 프로젝트에서 다룬 내용
 
-- modeling a short-lived collaboration workflow;
-- authorization at the data layer with RLS;
-- anonymous-user state without mandatory signup;
-- deterministic time-slot aggregation;
-- cleanup of temporary data through scheduled jobs.
+- 일회성 협업 데이터 모델링
+- PostgreSQL RLS 기반 권한 제어
+- 회원가입 없는 익명 사용자 상태 관리
+- 시간 slot 기반 일정 겹침 계산
+- scheduled job을 이용한 임시 데이터 정리
