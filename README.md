@@ -1,104 +1,61 @@
 # Meetly
 
-Meetly는 여러 사람이 **가능 시간, 장소 투표, 비용 분담**을 하나의 임시 모임방에서 정리할 수 있도록 만든 모바일 우선 일정 조율 서비스입니다.
+여러 사람이 가능한 시간, 장소 후보와 비용 분담을 한 모임방에서 정리하는 Nuxt 3·Supabase 기반 서비스입니다. 회원가입을 강제하지 않는 참여 흐름을 목표로 만들었습니다.
 
-핵심 조건은 회원가입을 강제하지 않고도 모임에 참여할 수 있게 하는 것이었습니다.
-
-## 해결하려는 문제
-
-실제 모임을 정할 때는 보통 세 가지를 따로 결정해야 합니다.
-
-1. 언제 만날지
-2. 어디서 만날지
-3. 비용을 어떻게 나눌지
-
-Meetly는 이 과정을 하나의 방 안에서 처리하고, 익명 참여자는 participant token으로 구분합니다.
-
-## 기술 스택
-
-| 영역 | 기술 |
-|---|---|
-| Frontend | Nuxt 3, Vue 3, TypeScript |
-| Database | Supabase PostgreSQL |
-| Authorization | PostgreSQL Row Level Security |
-| Server-side Job | Supabase Edge Functions |
-| Deployment | Vercel, Supabase |
-
-## 주요 기능
-
-### 가능 시간 겹침 계산
-
-참여자가 가능한 시간 범위를 입력하면 30분 단위 slot으로 정규화해 겹치는 인원 수를 계산합니다.
-
-이를 통해 가장 많은 사람이 가능한 시간대를 일관된 방식으로 비교할 수 있도록 했습니다.
-
-### 장소 투표
-
-참여자가 장소 후보를 추가하고 투표할 수 있습니다.
-
-방 생성자는 결과를 확인한 뒤 최종 장소를 확정할 수 있습니다.
-
-### 비용 분담
-
-비용 항목은 두 가지 방식으로 나눌 수 있습니다.
-
-- 균등 분할
-- 참여자별 직접 금액 입력
-
-직접 입력 방식에서는 참여자별 금액 합계가 전체 비용과 일치하는지 검증합니다.
-
-### 익명 참여
-
-핵심 기능은 별도 회원가입 없이 이용할 수 있습니다.
-
-participant token을 통해 방 내부 사용자를 구분하고, DB 접근 권한은 RLS 정책으로 제한합니다.
-
-### 임시 데이터 정리
-
-모임방은 영구적인 SNS 데이터가 아니라 일정 기간 사용 후 정리되는 데이터로 설계했습니다.
-
-만료된 방은 scheduled Edge Function으로 정리하며, 한 번에 처리하는 대상을 제한해 하나의 실패가 전체 작업을 중단시키지 않도록 구성했습니다.
-
-## 데이터와 권한 구조
-
-주요 데이터:
-
-- rooms
-- participants
-- availability blocks
-- place candidates / votes
-- expense items / shares
-
-Supabase RLS를 이용해 협업에 필요한 조회는 허용하면서, 데이터 수정은 해당 참여자와 방의 맥락에 맞게 제한합니다.
-
-## 프로젝트 구조
+## 구성
 
 ```text
-meetly/
-├── components/
-├── composables/
-├── pages/
-├── supabase/
-│   ├── migrations/
-│   └── functions/
-└── ARCHITECTURE.md
+Nuxt 3 / Vue 3 / TypeScript
+  ├─ Supabase 테이블 조회·수정
+  └─ Supabase Edge Functions
+       └─ PostgreSQL / RLS 정책
 ```
 
-## 실행
+주요 데이터는 방, 참여자, 가능 시간, 장소 후보·투표, 비용 항목·분담액입니다. SQL에는 30분 단위 시간 겹침 집계 함수가 있고, 클라이언트에는 방별 참여 토큰을 저장하고 사용하는 코드가 있습니다.
+
+## 사용자 흐름
+
+`useRoom.ts`는 `create-room` Edge Function으로 방과 방장 참여자를 생성하고, 응답받은 참여 토큰을 방별로 저장합니다. 시간·장소 확정도 토큰을 전달하는 Edge Function 경로를 사용합니다. 이 흐름과 클라이언트의 직접 DB 접근에 적용되는 RLS는 별도 권한 계층입니다.
+
+## 권한 관련 현재 제한
+
+RLS 정책이 있다는 사실만으로 모든 수정 권한이 검증된 것은 아닙니다.
+
+- 저장소의 `002_rls_policies.sql`에는 소유자 ID가 없는 방의 수정·삭제를 허용하는 조건이 있습니다. 이 조건은 익명 방의 실제 방장을 구분하지 않습니다.
+- 참여 토큰 컨텍스트를 별도 RPC로 설정한 뒤 다른 DB 요청에서 사용하는 코드가 있습니다. 실제 요청별 컨텍스트 전달과 정책 적용은 별도 검증이 필요합니다.
+- 서비스 역할 키를 사용하는 Edge Function은 자체적인 요청자·방장 검증이 필요합니다. DB의 직접 접근 정책만 고쳐서 모든 함수가 안전해지는 것은 아닙니다.
+
+따라서 현재 저장소 전체를 권한 검증 완료 상태로 소개하지 않습니다. 실제 운영 Supabase의 정책·함수·마이그레이션 상태는 저장소와 별도로 확인해야 합니다.
+
+## 로컬 개발
+
+저장소 루트에서 의존성을 설치합니다.
 
 ```bash
 npm install
+```
+
+Supabase 프로젝트의 URL과 공개용 anon key를 로컬 `.env`에 설정합니다. 서비스 역할 키는 클라이언트 환경 변수에 넣지 않습니다.
+
+```dotenv
+NUXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NUXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
+```
+
+```bash
 npm run dev
 ```
 
-Supabase URL과 anon key는 로컬 환경 변수로 설정합니다.
+화면 실행과 전체 기능 실행은 다릅니다. 방 생성·일정 확정 등의 기능을 사용하려면 해당 Supabase 프로젝트에 필요한 스키마·RLS·Edge Functions가 준비되어 있어야 합니다. [마이그레이션](supabase/migrations)과 [함수](supabase/functions)를 검토한 뒤 개발 환경에 적용하세요. 운영 DB에 SQL을 일괄 실행하는 방식은 권장하지 않습니다.
 
-DB schema와 RLS policy는 `supabase/migrations`에서 관리합니다.
+## 코드 확인 위치
 
-## 이 프로젝트에서 다룬 내용
+- [모임방 흐름과 토큰 사용](composables/useRoom.ts)
+- [Supabase 클라이언트](composables/useSupabase.ts)
+- [현재 RLS 정책](supabase/migrations/002_rls_policies.sql)
+- [시간 집계와 토큰 관련 SQL 함수](supabase/migrations/003_helper_functions.sql)
+- [시간 확정 Edge Function](supabase/functions/finalize-time/index.ts)
 
-- 일회성 협업 데이터 모델링
-- PostgreSQL RLS 기반 권한 제어
-- 회원가입 없는 익명 사용자 상태 관리
-- 시간 slot 기반 일정 겹침 계산
-- scheduled job을 이용한 임시 데이터 정리
+## 검증해야 할 시나리오
+
+방장과 다른 참여자가 같은 방을 수정하는 경우, 다른 방의 데이터 접근, 잘못된 토큰, 여러 HTTP 요청 사이의 토큰 컨텍스트, 만료 데이터 정리 실패를 구분해서 검사해야 합니다. 기능 코드·SQL·테스트의 존재와 실제 운영 환경의 통과 결과를 구분해 관리합니다.
