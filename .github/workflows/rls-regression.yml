@@ -1,0 +1,34 @@
+name: Room RLS regression
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'tests/rls/**'
+      - '.github/workflows/rls-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres-policy-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: meetly_rls_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create disposable fixtures
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -d meetly_rls_test -v ON_ERROR_STOP=1 < tests/rls/bootstrap.sql
+      - name: Apply room write restriction
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -d meetly_rls_test -v ON_ERROR_STOP=1 < supabase/migrations/005_restrict_direct_room_writes.sql
+      - name: Verify allowed and denied writes
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -d meetly_rls_test -v ON_ERROR_STOP=1 < tests/rls/rooms-write.sql
